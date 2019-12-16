@@ -1,0 +1,7 @@
+.idea
+*.iml
+*.DS_Store
+*.csv
+target/
+src/main/java/org/linqs/psl/data
+classpath.out
