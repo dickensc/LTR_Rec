@@ -1,4 +1,4 @@
-package main.java.org.linqs.psl.LTR_Recc;
+package org.linqs.psl.LTR_Recc;
 
 import org.linqs.psl.application.inference.InferenceApplication;
 import org.linqs.psl.application.inference.MPEInference;
@@ -27,6 +27,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.FileSystems;
 import java.nio.file.Paths;
 
 /**
@@ -40,7 +41,7 @@ public class Run {
     private static final String PARTITION_TARGETS = "targets";
     private static final String PARTITION_TRUTH = "truth";
 
-    private static final String DATA_PATH = Paths.get("..", "data").toString();
+    private static final String DATA_PATH = Paths.get(".", "data").toString();
     private static final String OUTPUT_PATH = "inferred-predicates";
 
     private static Logger log = LoggerFactory.getLogger(Run.class);
@@ -62,9 +63,9 @@ public class Run {
      * Defines the logical predicates used in this model.
      */
     private void definePredicates() {
-        model.addPredicate("RelativeRank", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        model.addPredicate("RelativeRank", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarUsers", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-        model.addPredicate("SimilarMovies", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        model.addPredicate("SimilarItems", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
     }
 
     /**
@@ -90,20 +91,23 @@ public class Run {
     private void loadData(Partition obsPartition, Partition targetsPartition, Partition truthPartition) {
         log.info("Loading data into database");
 
+        String path = FileSystems.getDefault().getPath(".").toAbsolutePath().toString();
+        System.out.println("Current relative path is: " + path);
+
         Inserter inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_users.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_users_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarItems"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_items.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_items_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "rel_rank_targets.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "rel_rank_targets.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
 
     }
 

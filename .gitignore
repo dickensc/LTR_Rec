@@ -3,5 +3,6 @@
 *.DS_Store
 *.csv
 target/
-src/main/java/org/linqs/psl/data
+data
 classpath.out
+inferred-predicates
