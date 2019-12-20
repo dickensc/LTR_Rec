@@ -107,7 +107,7 @@ public class Run {
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_truth.txt").toString());
 
     }
 
@@ -161,9 +161,10 @@ public class Run {
         Database truthDB = dataStore.getDatabase(truthPartition,
                 new StandardPredicate[]{model.getStandardPredicate("RelativeRank")});
 
-        Evaluator eval = new DiscreteEvaluator();
-        eval.compute(resultsDB, truthDB, model.getStandardPredicate("RelativeRank"));
-        log.info(eval.getAllStats());
+
+//        Evaluator eval = new DiscreteEvaluator();
+//        eval.compute(resultsDB, truthDB, model.getStandardPredicate("RelativeRank"));
+//        log.info(eval.getAllStats());
 
         resultsDB.close();
         truthDB.close();
@@ -184,7 +185,7 @@ public class Run {
         } catch (IOException ex) {
             throw new RuntimeException("Unable to write out results.", ex);
         }
-        //evalResults(targetsPartition, truthPartition);
+        evalResults(targetsPartition, truthPartition);
 
         dataStore.close();
     }

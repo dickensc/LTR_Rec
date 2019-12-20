@@ -6,3 +6,4 @@ target/
 data
 classpath.out
 inferred-predicates
+pom.xml
