@@ -11,7 +11,7 @@ import org.linqs.psl.database.rdbms.driver.H2DatabaseDriver;
 import org.linqs.psl.database.rdbms.driver.H2DatabaseDriver.Type;
 import org.linqs.psl.database.rdbms.driver.PostgreSQLDriver;
 import org.linqs.psl.database.rdbms.RDBMSDataStore;
-import org.linqs.psl.evaluation.statistics.DiscreteEvaluator;
+import org.linqs.psl.evaluation.statistics.RankingEvaluator;
 import org.linqs.psl.evaluation.statistics.Evaluator;
 import org.linqs.psl.java.PSLModel;
 import org.linqs.psl.model.atom.GroundAtom;
@@ -63,6 +63,7 @@ public class Run {
      * Defines the logical predicates used in this model.
      */
     private void definePredicates() {
+        model.addPredicate("Preference", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("RelativeRank", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarUsers", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarItems", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
@@ -73,6 +74,9 @@ public class Run {
      */
     private void defineRules() {
         log.info("Defining model rules");
+
+        model.addRule("1: Preference(U1, I1) & SimilarUsers(U1, U2) -> Preference(U2, I1) ^2");
+        model.addRule("1: Preference(U1, I1) & SimilarItems(I1, I2) -> Preference(U1, I2) ^2");
 
         model.addRule("RelativeRank(U1, I1, I2) + RelativeRank(U1, I2, I1) = 1.");
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarUsers(U1, U2) -> RelativeRank(U2, I1, I2) ^2");
@@ -97,14 +101,24 @@ public class Run {
         Inserter inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_obs.txt").toString());
 
+        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "pref_obs.txt").toString());
+
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_users_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarItems"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_items_obs.txt").toString());
 
+        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, "movie_lens", "pref_targets.txt").toString());
+
+
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
+
+        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "pref_truth.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_truth.txt").toString());
@@ -112,7 +126,7 @@ public class Run {
     }
 
     /**
-     * Run inference to infer the unknown RelativeRanks.
+     * Run inference to infer the unknown RelativeRanks and Preferences.
      */
     private void runInference(Partition obsPartition, Partition targetsPartition) {
         log.info("Starting inference");
@@ -145,6 +159,16 @@ public class Run {
             }
             writer.write("" + atom.getValue() + "\n");
         }
+        writer.close();
+
+        writer = new FileWriter(Paths.get(OUTPUT_PATH, "Preference.txt").toString());
+
+        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Preference"))) {
+            for (Constant argument : atom.getArguments()) {
+                writer.write(argument.toString() + "\t");
+            }
+            writer.write("" + atom.getValue() + "\n");
+        }
 
         writer.close();
         resultsDB.close();
@@ -159,12 +183,12 @@ public class Run {
                 model.getStandardPredicate("SimilarItems")};
         Database resultsDB = dataStore.getDatabase(targetsPartition, closedPredicates);
         Database truthDB = dataStore.getDatabase(truthPartition,
-                new StandardPredicate[]{model.getStandardPredicate("RelativeRank")});
+                new StandardPredicate[]{model.getStandardPredicate("Preference")});
 
-
-//        Evaluator eval = new DiscreteEvaluator();
-//        eval.compute(resultsDB, truthDB, model.getStandardPredicate("RelativeRank"));
-//        log.info(eval.getAllStats());
+        // Using default threshold for relevance: 0.5
+        RankingEvaluator eval = new RankingEvaluator();
+        eval.compute(resultsDB, truthDB, model.getStandardPredicate("Preference"));
+        log.info(eval.getAllStats());
 
         resultsDB.close();
         truthDB.close();
