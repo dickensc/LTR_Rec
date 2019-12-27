@@ -2,7 +2,9 @@ package org.linqs.psl.LTR_Recc;
 
 import org.linqs.psl.application.inference.InferenceApplication;
 import org.linqs.psl.application.inference.MPEInference;
+import org.linqs.psl.application.learning.weight.TrainingMap;
 import org.linqs.psl.config.Config;
+import org.linqs.psl.database.atom.PersistedAtomManager;
 import org.linqs.psl.database.Database;
 import org.linqs.psl.database.DataStore;
 import org.linqs.psl.database.Partition;
@@ -31,10 +33,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Paths;
 
 /**
- * A simple example.
- * In this example, we try to determine if two people know each other.
- * The model uses two features: where the people lived and what they like.
- * The model also has options to include symmetry and transitivity rules.
  */
 public class Run {
     private static final String PARTITION_OBSERVATIONS = "observations";
@@ -185,9 +183,12 @@ public class Run {
         Database truthDB = dataStore.getDatabase(truthPartition,
                 new StandardPredicate[]{model.getStandardPredicate("Preference")});
 
+        PersistedAtomManager atomManager = new PersistedAtomManager(resultsDB, false);
+        TrainingMap trainingMap = new TrainingMap(atomManager, truthDB, true, false);
+
         // Using default threshold for relevance: 0.5
         RankingEvaluator eval = new RankingEvaluator();
-        eval.compute(resultsDB, truthDB, model.getStandardPredicate("Preference"));
+        eval.compute(trainingMap, model.getStandardPredicate("Preference"));
         log.info(eval.getAllStats());
 
         resultsDB.close();
