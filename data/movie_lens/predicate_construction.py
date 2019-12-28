@@ -158,4 +158,4 @@ observed_relative_rank_df.to_csv('./data/rel_rank_obs.txt',
 truth_relative_rank_df.to_csv('./data/rel_rank_truth.txt',
                               sep='\t', header=False, index=True)
 target_relative_rank_df.drop('relative rank', axis=1).to_csv('./data/rel_rank_targets.txt',
-                               sep='\t', header=False, index=True)
+                                                             sep='\t', header=False, index=True)
