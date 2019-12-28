@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 readonly BASE_NAME='LTR_Recc'
 readonly CLASSPATH_FILE='classpath.out'
 readonly TARGET_CLASS="org.linqs.psl.${BASE_NAME}.Run"
 readonly DATA_PATH="./data"
 readonly FETCH_DATA_SCRIPT='fetchData.sh'
+
+declare -A DATA_SUB_PATH=(['movie_lens']='data' ['Jester']='jester/0/eval')
 DATASETS=("movie_lens")
 
 function main() {
@@ -57,7 +59,7 @@ function run() {
 
    for datasetName in "${DATASETS[@]}"
    do
-     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}"
+     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${DATA_SUB_PATH[$datasetName]}"
      if [[ "$?" -ne 0 ]]; then
         echo 'ERROR: Failed to run'
         exit 60

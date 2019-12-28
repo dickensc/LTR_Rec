@@ -8,6 +8,7 @@ function main() {
 
    check_requirements
 
+   fetch_file
    construct_predicates "${DATA_FILE}" "${DATA_DIR}" 'data'
 }
 
@@ -17,6 +18,12 @@ function check_requirements() {
       echo 'ERROR: python3 required to run project'
       exit 11
    fi
+}
+
+function fetch_file() {
+  # TODO
+  # method to fetch the movielens data from the web
+  return
 }
 
 function construct_predicates() {

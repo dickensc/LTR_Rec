@@ -5,6 +5,8 @@
 target/
 data/movie_lens/data
 data/movie_lens/ml-latest-small
+data/Jester/jester
+data/Jester/jester.zip
 classpath.out
 inferred-predicates
 pom.xml

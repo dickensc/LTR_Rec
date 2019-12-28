@@ -24,9 +24,8 @@ import org.linqs.psl.model.term.ConstantType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.util.Properties;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
@@ -42,13 +41,25 @@ public class Run {
     private static final String DATA_PATH = Paths.get(".", "data").toString();
     private static final String OUTPUT_PATH = "inferred-predicates";
 
+    private static final String CONFIG_PATH = "src/main/resources";
+    private static final String DATA_SOURCE_CONFIG_FILE_NAME = "dataSourceConfig.properties";
+
     private static Logger log = LoggerFactory.getLogger(Run.class);
 
     private DataStore dataStore;
     private PSLModel model;
     private String datasetName;
+    private String dataSubPath;
+    private Properties configs;
 
-    public Run(String dsName) {
+    public Run(String dsName, String dataPath) {
+        try {
+            configs = readPropertiesFile(DATA_SOURCE_CONFIG_FILE_NAME);
+        } catch (IOException ioe){
+            log.info(ioe.getMessage());
+            System.exit(1);
+        }
+
         String suffix = System.getProperty("user.name") + "@" + getHostname();
         String baseDBPath = Config.getString("dbpath", System.getProperty("java.io.tmpdir"));
         String dbPath = Paths.get(baseDBPath, this.getClass().getName() + "_" + suffix).toString();
@@ -58,6 +69,26 @@ public class Run {
         model = new PSLModel(dataStore);
 
         datasetName = dsName;
+        dataSubPath = dataPath;
+    }
+
+    private Properties readPropertiesFile(String fileName) throws IOException{
+        log.info("Loading Configurations");
+
+        FileInputStream fileInputStream = null;
+        Properties configs = new Properties();
+        try {
+            fileInputStream = new FileInputStream(Paths.get(CONFIG_PATH, fileName).toString());
+            configs.load(fileInputStream);
+        } catch(FileNotFoundException exception) {
+            log.info(exception.getMessage());
+            System.exit(1);
+        } finally {
+            if (fileInputStream != null){
+                fileInputStream.close();
+            }
+        }
+        return configs;
     }
 
     /**
@@ -76,12 +107,17 @@ public class Run {
     private void defineRules() {
         log.info("Defining model rules");
 
+        // point-wise predictions
         model.addRule("1: Preference(U1, I1) & SimilarUsers(U1, U2) -> Preference(U2, I1) ^2");
         model.addRule("1: Preference(U1, I1) & SimilarItems(I1, I2) -> Preference(U1, I2) ^2");
 
+        // pair-wise predictions
         model.addRule("RelativeRank(U1, I1, I2) + RelativeRank(U1, I2, I1) = 1.");
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarUsers(U1, U2) -> RelativeRank(U2, I1, I2) ^2");
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarItems(I1, I3) -> RelativeRank(U1, I1, I3) ^2");
+
+        // pair-wise and point-wise combination
+        model.addRule("1: 0.5 * Preference(U1, I1) - 0.5 * Preference(U1, I2) + 0.5 <= RelativeRank(U1, I1, I2) ^2");
 
         log.debug("model: {}", model);
     }
@@ -100,29 +136,37 @@ public class Run {
         System.out.println("Current relative path is: " + path);
 
         Inserter inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/rel_rank_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/pref_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/sim_users_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_sim_users") + "_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarItems"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/sim_items_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_sim_items") + "_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
-        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName, "data/pref_targets.txt").toString());
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_targets.txt").toString());
 
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
-        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName, "data/rel_rank_targets.txt").toString());
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_targets.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/pref_truth.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_truth.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "data/rel_rank_truth.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_truth.txt").toString());
 
     }
 
@@ -223,10 +267,11 @@ public class Run {
      * Run this model from the command line.
      */
     public static void main(String[] args) {
-        for (String datasetName: args) {
-            Run run = new Run(datasetName);
-            run.run();
-        }
+        String datasetName = args[0];
+        String dataPath = args[1];
+
+        Run run = new Run(datasetName, dataPath);
+        run.run();
     }
 
     private static String getHostname() {
