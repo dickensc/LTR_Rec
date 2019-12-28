@@ -1,2 +1,2 @@
-# LTR_Recc
-Learning to Rank Reccomender System PSL
+# LTR_Rec
+Learning to Rank Recommender System PSL
