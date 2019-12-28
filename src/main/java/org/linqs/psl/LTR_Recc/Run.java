@@ -46,8 +46,9 @@ public class Run {
 
     private DataStore dataStore;
     private PSLModel model;
+    private String datasetName;
 
-    public Run() {
+    public Run(String dsName) {
         String suffix = System.getProperty("user.name") + "@" + getHostname();
         String baseDBPath = Config.getString("dbpath", System.getProperty("java.io.tmpdir"));
         String dbPath = Paths.get(baseDBPath, this.getClass().getName() + "_" + suffix).toString();
@@ -55,6 +56,8 @@ public class Run {
         // dataStore = new RDBMSDataStore(new PostgreSQLDriver("psl", true));
 
         model = new PSLModel(dataStore);
+
+        datasetName = dsName;
     }
 
     /**
@@ -97,29 +100,29 @@ public class Run {
         System.out.println("Current relative path is: " + path);
 
         Inserter inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "rel_rank_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "pref_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "pref_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_users_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "sim_users_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarItems"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "sim_items_obs.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "sim_items_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
-        inserter.loadDelimitedData(Paths.get(DATA_PATH, "movie_lens", "pref_targets.txt").toString());
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName, "pref_targets.txt").toString());
 
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
-        inserter.loadDelimitedData(Paths.get(DATA_PATH, "movie_lens", "rel_rank_targets.txt").toString());
+        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName, "rel_rank_targets.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "pref_truth.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "pref_truth.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, "movie_lens", "rel_rank_truth.txt").toString());
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName, "rel_rank_truth.txt").toString());
 
     }
 
@@ -149,7 +152,8 @@ public class Run {
         Database resultsDB = dataStore.getDatabase(targetsPartition);
 
         (new File(OUTPUT_PATH)).mkdirs();
-        FileWriter writer = new FileWriter(Paths.get(OUTPUT_PATH, "RelativeRank.txt").toString());
+        (new File(Paths.get(OUTPUT_PATH, datasetName).toString())).mkdirs();
+        FileWriter writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"RelativeRank.txt").toString());
 
         for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("RelativeRank"))) {
             for (Constant argument : atom.getArguments()) {
@@ -159,7 +163,7 @@ public class Run {
         }
         writer.close();
 
-        writer = new FileWriter(Paths.get(OUTPUT_PATH, "Preference.txt").toString());
+        writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "Preference.txt").toString());
 
         for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Preference"))) {
             for (Constant argument : atom.getArguments()) {
@@ -219,8 +223,10 @@ public class Run {
      * Run this model from the command line.
      */
     public static void main(String[] args) {
-        Run run = new Run();
-        run.run();
+        for (String datasetName: args) {
+            Run run = new Run(datasetName);
+            run.run();
+        }
     }
 
     private static String getHostname() {

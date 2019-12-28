@@ -3,24 +3,51 @@
 readonly BASE_NAME='LTR_Recc'
 readonly CLASSPATH_FILE='classpath.out'
 readonly TARGET_CLASS="org.linqs.psl.${BASE_NAME}.Run"
+DATASETS=("movie_lens")
 
 function main() {
    trap exit SIGINT
 
+   parseArgs "$@"
    check_requirements
    compile
    buildClasspath
    run
 }
 
+function parseArgs() {
+  while getopts 'ad:' opt;
+  do
+     case "$opt" in
+        a ) DATASETS=("movie_lens") ;;
+        d ) DATASETS=("$OPTARG") ;;
+        ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
+     esac
+  done
+
+  shift $((OPTIND - 1))
+}
+
+function helpFunction()
+{
+   echo ""
+   echo "Usage: $0 -a parameterA -b parameterB -c parameterC"
+   echo -e "\t-a Description of what is parameterA"
+   echo -e "\t-d Name of dataset you would like to run inference on: movie_lens"
+   exit 1 # Exit script after printing help
+}
+
 function run() {
    echo "Running PSL"
 
-   java -cp ./target/classes:$(cat ${CLASSPATH_FILE}) ${TARGET_CLASS}
-   if [[ "$?" -ne 0 ]]; then
-      echo 'ERROR: Failed to run'
-      exit 60
-   fi
+   for datasetName in "${DATASETS[@]}"
+   do
+     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}"
+     if [[ "$?" -ne 0 ]]; then
+        echo 'ERROR: Failed to run'
+        exit 60
+     fi
+   done
 }
 
 function check_requirements() {
