@@ -3,16 +3,31 @@
 readonly BASE_NAME='LTR_Recc'
 readonly CLASSPATH_FILE='classpath.out'
 readonly TARGET_CLASS="org.linqs.psl.${BASE_NAME}.Run"
+readonly DATA_PATH="./data"
+readonly FETCH_DATA_SCRIPT='fetchData.sh'
 DATASETS=("movie_lens")
 
 function main() {
    trap exit SIGINT
 
    parseArgs "$@"
+   getData
    check_requirements
    compile
    buildClasspath
    run
+}
+
+function getData() {
+   pushd . > /dev/null
+
+   for datasetName in "${DATASETS[@]}"
+   do
+     cd "${DATA_PATH}/${datasetName}" || exit 1
+     bash "${FETCH_DATA_SCRIPT}"
+   done
+
+   popd > /dev/null || exit 1
 }
 
 function parseArgs() {

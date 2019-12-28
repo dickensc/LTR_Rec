@@ -3,7 +3,8 @@
 *.DS_Store
 *.csv
 target/
-data
+data/movie_lens/data
+data/movie_lens/ml-latest-small
 classpath.out
 inferred-predicates
 pom.xml
