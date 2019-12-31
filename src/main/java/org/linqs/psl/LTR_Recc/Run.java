@@ -116,7 +116,7 @@ public class Run {
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarUsers(U1, U2) -> RelativeRank(U2, I1, I2) ^2");
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarItems(I1, I3) -> RelativeRank(U1, I1, I3) ^2");
 
-        // pair-wise and point-wise combination
+        // pair-wise and point-wise relation
         model.addRule("1: 0.5 * Preference(U1, I1) - 0.5 * Preference(U1, I2) + 0.5 <= RelativeRank(U1, I1, I2) ^2");
 
         log.debug("model: {}", model);

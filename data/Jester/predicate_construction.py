@@ -1,68 +1,80 @@
 """
 This script constructs the necessary data files needed for psl-ltr-recommender
 """
-import os
 import pandas as pd
-import numpy as np
-import itertools
-from sklearn.metrics.pairwise import cosine_similarity
+
+import sys
+sys.path.append('../')
+from predicate_construction_helpers import query_cosine_similarity
+from predicate_construction_helpers import query_item_preferences
+"""
+Jester Configs
+"""
+data_path = './jester'
+dataset_directory_nums = ['0', '1', '2', '3', '4', '5', '6', '7']
+dataset_types = ['eval', 'learn']
 
 """
-Import raw data
-"""
-ratings_obs_df = pd.read_csv('./jester/0/eval/rating_obs.txt', sep='\t', header=None)
-ratings_obs_df.columns = ['userId', 'jokeId', 'rating']
-ratings_obs_df = ratings_obs_df.astype({'userId': str, 'jokeId': str, 'rating': float})
-
-ratings_targets_df = pd.read_csv('./jester/0/eval/rating_targets.txt', sep='\t', header=None)
-ratings_targets_df.columns = ['userId', 'jokeId']
-ratings_targets_df = ratings_targets_df.astype({'userId': str, 'jokeId': float})
-
-ratings_truth_df = pd.read_csv('./jester/0/eval/rating_truth.txt', sep='\t', header=None)
-ratings_truth_df.columns = ['userId', 'jokeId', 'rating']
-ratings_truth_df = ratings_truth_df.astype({'userId': str, 'jokeId': str, 'rating': float})
-
-users = ratings_obs_df.userId.unique()
-jokes = ratings_obs_df.jokeId.unique()
-
-"""
-Relative Rank
+iterate over all dataset directories and types
 """
 
+for data_dir_num in dataset_directory_nums:
+    for data_type in dataset_types:
+        """
+        Import raw data
+        """
+        ratings_obs_df = pd.read_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rating_obs.txt',
+                                     sep='\t', header=None)
+        ratings_obs_df.columns = ['userId', 'jokeId', 'rating']
+        ratings_obs_df = ratings_obs_df.astype({'userId': str, 'jokeId': str, 'rating': float})
 
-# Method to return the user, movie1, movie2, relative rank tuple
-def user_relative_ranks(ratings_frame):
-    def func(u):
-        user_ratings_df = ratings_frame[ratings_frame.userId == u].loc[:, ['jokeId', 'rating']].set_index('jokeId')
-        user_pairwise_jokes = np.subtract.outer(user_ratings_df.rating.to_numpy(), user_ratings_df.rating.to_numpy())
-        binary_user_pairwise_jokes = user_pairwise_jokes.copy()
-        binary_user_pairwise_jokes[user_pairwise_jokes < 0] = 0
-        binary_user_pairwise_jokes[user_pairwise_jokes > 0] = 1
-        binary_user_pairwise_jokes[user_pairwise_jokes == 0] = 0.5
-        binary_user_pairwise_jokes_df = pd.DataFrame(binary_user_pairwise_jokes,
-                                                     columns=user_ratings_df.index,
-                                                     index=user_ratings_df.index).stack()
-        binary_user_pairwise_jokes_df.name = u
-        return binary_user_pairwise_jokes_df
-    return func
+        ratings_targets_df = pd.read_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rating_targets.txt',
+                                         sep='\t', header=None)
+        ratings_targets_df.columns = ['userId', 'jokeId']
+        ratings_targets_df = ratings_targets_df.astype({'userId': str, 'jokeId': float})
 
+        ratings_truth_df = pd.read_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rating_truth.txt',
+                                       sep='\t', header=None)
+        ratings_truth_df.columns = ['userId', 'jokeId', 'rating']
+        ratings_truth_df = ratings_truth_df.astype({'userId': str, 'jokeId': str, 'rating': float})
 
-# observed relative ranks
-observed_user_joke_pairs = list(map(user_relative_ranks(ratings_obs_df), users))
-observed_relative_rank_df = pd.concat(observed_user_joke_pairs, keys=[df.name for df in observed_user_joke_pairs])
+        """
+        Relative Rank
+        """
+        # observed relative ranks
+        observed_user_joke_preferences = list(map(
+            query_item_preferences(ratings_obs_df, 'userId', 'jokeId', 'rating'), ratings_obs_df.userId.unique()
+        ))
+        observed_relative_rank_df = pd.concat(observed_user_joke_preferences, keys=[df.name for df in
+                                                                                    observed_user_joke_preferences])
 
-# truth relative ranks
-truth_user_joke_pairs = map(user_relative_ranks(ratings_truth_df), users)
-truth_relative_rank_df = pd.concat(observed_user_joke_pairs, keys=[df.name for df in observed_user_joke_pairs])
+        # truth relative ranks
+        truth_user_joke_preferences = list(map(
+            query_item_preferences(ratings_truth_df, 'userId', 'jokeId', 'rating'), ratings_truth_df.userId.unique()
+        ))
+        truth_relative_rank_df = pd.concat(truth_user_joke_preferences, keys=[df.name for df in
+                                                                              truth_user_joke_preferences])
 
-# target relative rank
-all_user_joke_index = pd.MultiIndex.from_product([users, jokes, jokes])
-all_relative_rank_df = pd.DataFrame(index=all_user_joke_index)
-target_relative_rank_df = all_relative_rank_df.loc[~all_relative_rank_df.index.isin(observed_relative_rank_df.index)]
+        # target relative rank
+        target_users = ratings_targets_df.userId.unique()
+        target_jokes = ratings_targets_df.jokeId.unique()
+        all_user_joke_index = pd.MultiIndex.from_product([target_users, target_jokes, target_jokes])
+        all_relative_rank_df = pd.DataFrame(index=all_user_joke_index)
+        target_relative_rank_df = all_relative_rank_df.loc[
+            ~all_relative_rank_df.index.isin(observed_relative_rank_df.index)]
 
-observed_relative_rank_df.to_csv('./jester/0/eval/rel_rank_obs.txt',
-                                 sep='\t', header=False, index=True)
-truth_relative_rank_df.to_csv('./jester/0/eval/rel_rank_truth.txt',
-                              sep='\t', header=False, index=True)
-target_relative_rank_df.to_csv('./jester/0/eval/rel_rank_targets.txt',
-                               sep='\t', header=False, index=True)
+        observed_relative_rank_df.to_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rel_rank_obs.txt',
+                                         sep='\t', header=False, index=True)
+        truth_relative_rank_df.to_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rel_rank_truth.txt',
+                                      sep='\t', header=False, index=True)
+        target_relative_rank_df.to_csv(data_path + '/' + data_dir_num + '/' + data_type + '/' + 'rel_rank_targets.txt',
+                                       sep='\t', header=False, index=True)
+
+        """
+        User Similarity Predicate: built only from observed ratings
+        """
+        user_cosine_similarity_series = query_cosine_similarity(ratings_obs_df, 'userId', 'jokeId', 'rating')
+        user_cosine_similarity_series.to_csv(
+            data_path + '/' + data_dir_num + '/' + data_type + '/' + 'sim_users_obs.txt',
+            sep='\t', header=False, index=True
+        )

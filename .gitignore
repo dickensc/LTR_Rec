@@ -4,7 +4,8 @@
 *.csv
 target/
 data/movie_lens/data
-data/movie_lens/ml-latest-small
+data/movie_lens/ml-100k
+data/movie_lens/ml-100k.zip
 data/Jester/jester
 data/Jester/jester.zip
 classpath.out

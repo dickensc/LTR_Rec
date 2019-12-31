@@ -1,16 +1,26 @@
 #!/bin/bash
 
-readonly DATA_URL='https://linqs-data.soe.ucsc.edu/public/psl-infinite-experiments/jester.zip'
-readonly DATA_FILE='jester.zip'
-readonly DATA_DIR='data'
-
 function main() {
+   local name=$1
+   local data_url=$2
+   local data_file=$3
+   local data_dir=$4
+   local data_sub_dir=$5
+   local predicate_construction_script=$6
+
    trap exit SIGINT
 
    check_requirements
 
-   fetch_file "${DATA_URL}" "${DATA_FILE}" 'data'
-   extract_zip "${DATA_FILE}" "${DATA_DIR}" 'jester'
+   pushd . > /dev/null
+
+   cd "${data_dir}" || exit 1
+
+   fetch_file "${data_url}" "${data_file}"
+   extract_zip "${data_file}" "${data_sub_dir}" "${name}"
+   construct_predicates "${predicate_construction_script}" "${data_sub_dir}" "${name}"
+
+   popd > /dev/null || exit 1
 }
 
 function check_requirements() {
@@ -54,24 +64,23 @@ function get_fetch_command() {
 
 function fetch_file() {
    local url=$1
-   local path=$2
-   local name=$3
+   local file_name=$2
 
-   if [[ -e "${path}" ]]; then
-      echo "${name} file found cached, skipping download."
+   if [[ -e "${file_name}" ]]; then
+      echo "${file_name} file found cached, skipping download."
       return
    fi
 
-   echo "Downloading ${name} file with command: $FETCH_COMMAND"
-   `get_fetch_command` "${path}" "${url}"
+   echo "Downloading ${file_name} file with command: $FETCH_COMMAND"
+   $(get_fetch_command) "${file_name}" "${url}"
    if [[ "$?" -ne 0 ]]; then
-      echo "ERROR: Failed to download ${name} file"
+      echo "ERROR: Failed to download ${file_name} file"
       exit 30
    fi
 }
 
 function extract_zip() {
-   local path=$1
+   local zipped_data_file=$1
    local expectedDir=$2
    local name=$3
 
@@ -81,11 +90,28 @@ function extract_zip() {
    fi
 
    echo "Extracting the ${name} zip"
-   unzip "${path}"
+   unzip "${zipped_data_file}"
    if [[ "$?" -ne 0 ]]; then
       echo "ERROR: Failed to extract ${name} zip"
       exit 40
    fi
+}
+
+function construct_predicates() {
+  local predicate_construction_script=$1
+  local expectedDir=$2
+  local name=$3
+
+#  if [[ -e "${expectedDir}" ]]; then
+#    echo "${name} predicates found cached, skipping predicate construction."
+#    return
+#  fi
+
+  python3 "${predicate_construction_script}"
+  if [[ "$?" -ne 0 ]]; then
+    echo "ERROR: Failed to run ${predicate_construction_script}"
+    exit 60
+  fi
 }
 
 main "$@"

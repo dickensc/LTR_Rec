@@ -6,8 +6,20 @@ readonly TARGET_CLASS="org.linqs.psl.${BASE_NAME}.Run"
 readonly DATA_PATH="./data"
 readonly FETCH_DATA_SCRIPT='fetchData.sh'
 
-declare -A DATA_SUB_PATH=(['movie_lens']='data' ['Jester']='jester/0/eval')
 DATASETS=("movie_lens")
+declare -A FINAL_DATA_PATH=(['movie_lens']='data' ['Jester']='jester/0/eval')
+declare -A DATA_URL
+DATA_URL['movie_lens']='https://files.grouplens.org/datasets/movielens/ml-100k.zip'
+DATA_URL['Jester']='https://linqs-data.soe.ucsc.edu/public/psl-infinite-experiments/jester.zip'
+declare -A DATA_FILE
+DATA_FILE['movie_lens']='ml-100k.zip'
+DATA_FILE['Jester']='jester.zip'
+declare -A DATA_SUB_DIR
+DATA_SUB_DIR['movie_lens']='ml-100k'
+DATA_SUB_DIR['Jester']='jester'
+declare -A PREDICATE_CONSTRUCTION_SCRIPTS
+PREDICATE_CONSTRUCTION_SCRIPTS['movie_lens']='predicate_construction.py'
+PREDICATE_CONSTRUCTION_SCRIPTS['Jester']='predicate_construction.py'
 
 function main() {
    trap exit SIGINT
@@ -22,11 +34,11 @@ function main() {
 
 function getData() {
    pushd . > /dev/null
+   cd "${DATA_PATH}" || exit 1
 
    for datasetName in "${DATASETS[@]}"
    do
-     cd "${DATA_PATH}/${datasetName}" || exit 1
-     bash "${FETCH_DATA_SCRIPT}"
+     bash "${FETCH_DATA_SCRIPT}" "${datasetName}" "${DATA_URL[$datasetName]}" "${DATA_FILE[$datasetName]}" "${datasetName}" "${DATA_SUB_DIR[$datasetName]}" "${PREDICATE_CONSTRUCTION_SCRIPTS[$datasetName]}"
    done
 
    popd > /dev/null || exit 1
@@ -59,7 +71,7 @@ function run() {
 
    for datasetName in "${DATASETS[@]}"
    do
-     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${DATA_SUB_PATH[$datasetName]}"
+     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${FINAL_DATA_PATH[$datasetName]}"
      if [[ "$?" -ne 0 ]]; then
         echo 'ERROR: Failed to run'
         exit 60
