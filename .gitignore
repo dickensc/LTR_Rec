@@ -11,3 +11,4 @@ data/Jester/jester.zip
 classpath.out
 inferred-predicates
 pom.xml
+data/__pycache__
