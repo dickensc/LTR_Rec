@@ -63,8 +63,8 @@ public class Run {
         String suffix = System.getProperty("user.name") + "@" + getHostname();
         String baseDBPath = Config.getString("dbpath", System.getProperty("java.io.tmpdir"));
         String dbPath = Paths.get(baseDBPath, this.getClass().getName() + "_" + suffix).toString();
-        dataStore = new RDBMSDataStore(new H2DatabaseDriver(Type.Disk, dbPath, true));
-        // dataStore = new RDBMSDataStore(new PostgreSQLDriver("psl", true));
+        // dataStore = new RDBMSDataStore(new H2DatabaseDriver(Type.Disk, dbPath, true));
+        dataStore = new RDBMSDataStore(new PostgreSQLDriver("psl", true));
 
         model = new PSLModel(dataStore);
 
@@ -154,7 +154,6 @@ public class Run {
         inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_pref") + "_targets.txt").toString());
-
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,

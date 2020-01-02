@@ -6,7 +6,7 @@ readonly TARGET_CLASS="org.linqs.psl.${BASE_NAME}.Run"
 readonly DATA_PATH="./data"
 readonly FETCH_DATA_SCRIPT='fetchData.sh'
 
-DATASETS=("movie_lens")
+DATASETS=("movie_lens" "Jester")
 declare -A FINAL_DATA_PATH=(['movie_lens']='data' ['Jester']='jester/0/eval')
 declare -A DATA_URL
 DATA_URL['movie_lens']='https://files.grouplens.org/datasets/movielens/ml-100k.zip'
@@ -48,7 +48,7 @@ function parseArgs() {
   while getopts 'ad:' opt;
   do
      case "$opt" in
-        a ) DATASETS=("movie_lens") ;;
+        a ) DATASETS=("movie_lens" "Jester") ;;
         d ) DATASETS=("$OPTARG") ;;
         ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
      esac
@@ -60,9 +60,9 @@ function parseArgs() {
 function helpFunction()
 {
    echo ""
-   echo "Usage: $0 -a parameterA -b parameterB -c parameterC"
-   echo -e "\t-a Description of what is parameterA"
-   echo -e "\t-d Name of dataset you would like to run inference on: movie_lens"
+   echo "Usage: $0 -a -d parameterD"
+   echo -e "\t-a run inference on all datasets"
+   echo -e "\t-d the name of the dataset you would like to run inference on: ${DATASETS[*]}"
    exit 1 # Exit script after printing help
 }
 
@@ -71,7 +71,7 @@ function run() {
 
    for datasetName in "${DATASETS[@]}"
    do
-     java -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${FINAL_DATA_PATH[$datasetName]}"
+     java -Xms4000m -Xmx28000m -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${FINAL_DATA_PATH[$datasetName]}"
      if [[ "$?" -ne 0 ]]; then
         echo 'ERROR: Failed to run'
         exit 60

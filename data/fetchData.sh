@@ -18,7 +18,7 @@ function main() {
 
    fetch_file "${data_url}" "${data_file}"
    extract_zip "${data_file}" "${data_sub_dir}" "${name}"
-   construct_predicates "${predicate_construction_script}" "${data_sub_dir}" "${name}"
+   #construct_predicates "${predicate_construction_script}" "${data_sub_dir}" "${name}"
 
    popd > /dev/null || exit 1
 }
@@ -106,7 +106,7 @@ function construct_predicates() {
 #    echo "${name} predicates found cached, skipping predicate construction."
 #    return
 #  fi
-
+  echo "Constructing the ${name} predicates"
   python3 "${predicate_construction_script}"
   if [[ "$?" -ne 0 ]]; then
     echo "ERROR: Failed to run ${predicate_construction_script}"
