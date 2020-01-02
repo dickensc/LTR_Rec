@@ -99,10 +99,18 @@ public class Run {
      * Defines the logical predicates used in this model.
      */
     private void definePredicates() {
-        model.addPredicate("relevance", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-        model.addPredicate("RelativeRank", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        model.addPredicate("Relevance", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        model.addPredicate("Preference", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarUsers", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarItems", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+
+        // Blocking Predicates
+        model.addPredicate("QueryQueryCanopy", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        StandardPredicate QueryQueryCanopy = model.getPredicate("QueryQueryCanopy");
+        QueryQueryCanopy.setBlock(true);
+        model.addPredicate("ItemItemCanopy", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        StandardPredicate ItemItemCanopy = model.getPredicate("UserUserCanopy");
+        ItemItemCanopy.setBlock(true);
     }
 
     /**
@@ -112,16 +120,16 @@ public class Run {
         log.info("Defining model rules");
 
         // point-wise predictions
-        model.addRule("1: relevance(U1, I1) & SimilarUsers(U1, U2) -> relevance(U2, I1) ^2");
-        model.addRule("1: relevance(U1, I1) & SimilarItems(I1, I2) -> relevance(U1, I2) ^2");
+        model.addRule("1: Relevance(U1, I1) & SimilarUsers(U1, U2) -> Relevance(U2, I1) ^2");
+        model.addRule("1: Relevance(U1, I1) & SimilarItems(I1, I2) -> Relevance(U1, I2) ^2");
 
         // pair-wise predictions
-        model.addRule("RelativeRank(U1, I1, I2) + RelativeRank(U1, I2, I1) = 1.");
-        model.addRule("1: RelativeRank(U1, I1, I2) & SimilarUsers(U1, U2) -> RelativeRank(U2, I1, I2) ^2");
-        model.addRule("1: RelativeRank(U1, I1, I2) & SimilarItems(I1, I3) -> RelativeRank(U1, I1, I3) ^2");
+        model.addRule("Preference(U1, I1, I2) + Preference(U1, I2, I1) = 1.");
+        model.addRule("1: Preference(U1, I1, I2) & SimilarUsers(U1, U2) & QueryQueryCanopy(U1, U2) & ItemItemCanopy(I1, I2) -> Preference(U2, I1, I2) ^2");
+        model.addRule("1: Preference(U1, I1, I2) & SimilarItems(I2, I3) & ItemItemCanopy(I1, I2) & ItemItemCanopy(I1, I3) -> Preference(U1, I1, I3) ^2");
 
         // pair-wise and point-wise relation
-        model.addRule("1: 0.5 * relevance(U1, I1) - 0.5 * relevance(U1, I2) + 0.5 <= RelativeRank(U1, I1, I2) ^2");
+        model.addRule("1: 0.5 * Relevance(U1, I1) - 0.5 * Relevance(U1, I2) + 0.5 <= Preference(U1, I1, I2) ^2");
 
         log.debug("model: {}", model);
     }
@@ -139,11 +147,12 @@ public class Run {
         String path = FileSystems.getDefault().getPath(".").toAbsolutePath().toString();
         System.out.println("Current relative path is: " + path);
 
-        Inserter inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), obsPartition);
+        // Observed
+        Inserter inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_obs.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_obs.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), obsPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("Relevance"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_relevance") + "_obs.txt").toString());
 
@@ -155,32 +164,44 @@ public class Run {
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_sim_items") + "_obs.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), targetsPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("QueryQueryCanopy"), obsPartition);
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_query_query_canopy") + "_obs.txt").toString());
+
+        inserter = dataStore.getInserter(model.getStandardPredicate("ItemItemCanopy"), obsPartition);
+        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
+                dataSubPath, configs.getProperty(datasetName + "_item_item_canopy") + "_obs.txt").toString());
+
+        // Targets
+        inserter = dataStore.getInserter(model.getStandardPredicate("Relevance"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_relevance") + "_targets.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_targets.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_targets.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), truthPartition);
+
+        // Truths
+        inserter = dataStore.getInserter(model.getStandardPredicate("Relevance"), truthPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_relevance") + "_truth.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_truth.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_pref") + "_truth.txt").toString());
 
     }
 
     /**
-     * Run inference to infer the unknown RelativeRanks and relevances.
+     * Run inference to infer the unknown Preferences and Relevances.
      */
     private void runInference(Partition obsPartition, Partition targetsPartition) {
         log.info("Starting inference");
 
         StandardPredicate[] closedPredicates = new StandardPredicate[]{model.getStandardPredicate("SimilarUsers"),
-                model.getStandardPredicate("SimilarItems")};
+                model.getStandardPredicate("SimilarItems"), model.getStandardPredicate("QueryQueryCanopy"),
+                model.getStandardPredicate("ItemItemCanopy")};
         Database inferDB = dataStore.getDatabase(targetsPartition, closedPredicates, obsPartition);
 
         InferenceApplication inference = new MPEInference(model, inferDB);
@@ -200,26 +221,26 @@ public class Run {
 
         (new File(OUTPUT_PATH)).mkdirs();
         (new File(Paths.get(OUTPUT_PATH, datasetName).toString())).mkdirs();
-        FileWriter rel_rank_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"RelativeRank.txt").toString());
+        FileWriter pref_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"Preference.txt").toString());
 
-        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("RelativeRank"))) {
+        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Preference"))) {
             for (Constant argument : atom.getArguments()) {
-                rel_rank_writer.write(argument.toString() + "\t");
+                pref_writer.write(argument.toString() + "\t");
             }
-            rel_rank_writer.write("" + atom.getValue() + "\n");
+            pref_writer.write("" + atom.getValue() + "\n");
         }
-        rel_rank_writer.close();
+        pref_writer.close();
 
-        FileWriter relevance_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "relevance.txt").toString());
+        FileWriter Relevance_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "Relevance.txt").toString());
 
-        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("relevance"))) {
+        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Relevance"))) {
             for (Constant argument : atom.getArguments()) {
-                relevance_writer.write(argument.toString() + "\t");
+                Relevance_writer.write(argument.toString() + "\t");
             }
-            relevance_writer.write("" + atom.getValue() + "\n");
+            Relevance_writer.write("" + atom.getValue() + "\n");
         }
 
-        relevance_writer.close();
+        Relevance_writer.close();
         resultsDB.close();
     }
 
@@ -229,17 +250,18 @@ public class Run {
      */
     private void evalResults(Partition targetsPartition, Partition truthPartition) {
         StandardPredicate[] closedPredicates = new StandardPredicate[]{model.getStandardPredicate("SimilarUsers"),
-                model.getStandardPredicate("SimilarItems")};
+                model.getStandardPredicate("SimilarItems"), model.getStandardPredicate("QueryQueryCanopy"),
+                model.getStandardPredicate("ItemItemCanopy")};
         Database resultsDB = dataStore.getDatabase(targetsPartition, closedPredicates);
         Database truthDB = dataStore.getDatabase(truthPartition,
-                new StandardPredicate[]{model.getStandardPredicate("relevance")});
+                new StandardPredicate[]{model.getStandardPredicate("Relevance")});
 
         PersistedAtomManager atomManager = new PersistedAtomManager(resultsDB, false);
         TrainingMap trainingMap = new TrainingMap(atomManager, truthDB, true, false);
 
-        // Using default threshold for relevance: 0.5
+        // Using default threshold for Relevance: 0.5
         RankingEvaluator eval = new RankingEvaluator();
-        eval.compute(trainingMap, model.getStandardPredicate("relevance"));
+        eval.compute(trainingMap, model.getStandardPredicate("Relevance"));
         log.info(eval.getAllStats());
 
         resultsDB.close();
