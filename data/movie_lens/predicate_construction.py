@@ -31,10 +31,10 @@ if not os.path.exists('./data'):
     os.makedirs('./data')
 
 """
-Dev. subset to only 3 users and 100 movies
+Dev. subset to only 10 users and 100 movies
 """
-n_users = 3
-n_movies = 10
+n_users = 10
+n_movies = 100
 np.random.seed(0)
 
 users = ratings_df.userId.unique()[:n_users]

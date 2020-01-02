@@ -1,4 +1,4 @@
-package org.linqs.psl.LTR_Recc;
+package org.linqs.psl.LTR_Rec;
 
 import org.linqs.psl.application.inference.InferenceApplication;
 import org.linqs.psl.application.inference.MPEInference;
@@ -24,7 +24,11 @@ import org.linqs.psl.model.term.ConstantType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Properties;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -60,9 +64,9 @@ public class Run {
             System.exit(1);
         }
 
-        String suffix = System.getProperty("user.name") + "@" + getHostname();
-        String baseDBPath = Config.getString("dbpath", System.getProperty("java.io.tmpdir"));
-        String dbPath = Paths.get(baseDBPath, this.getClass().getName() + "_" + suffix).toString();
+        // String suffix = System.getProperty("user.name") + "@" + getHostname();
+        // String baseDBPath = Config.getString("dbpath", System.getProperty("java.io.tmpdir"));
+        // String dbPath = Paths.get(baseDBPath, this.getClass().getName() + "_" + suffix).toString();
         // dataStore = new RDBMSDataStore(new H2DatabaseDriver(Type.Disk, dbPath, true));
         dataStore = new RDBMSDataStore(new PostgreSQLDriver("psl", true));
 
@@ -95,7 +99,7 @@ public class Run {
      * Defines the logical predicates used in this model.
      */
     private void definePredicates() {
-        model.addPredicate("Preference", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
+        model.addPredicate("relevance", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("RelativeRank", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarUsers", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
         model.addPredicate("SimilarItems", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
@@ -108,8 +112,8 @@ public class Run {
         log.info("Defining model rules");
 
         // point-wise predictions
-        model.addRule("1: Preference(U1, I1) & SimilarUsers(U1, U2) -> Preference(U2, I1) ^2");
-        model.addRule("1: Preference(U1, I1) & SimilarItems(I1, I2) -> Preference(U1, I2) ^2");
+        model.addRule("1: relevance(U1, I1) & SimilarUsers(U1, U2) -> relevance(U2, I1) ^2");
+        model.addRule("1: relevance(U1, I1) & SimilarItems(I1, I2) -> relevance(U1, I2) ^2");
 
         // pair-wise predictions
         model.addRule("RelativeRank(U1, I1, I2) + RelativeRank(U1, I2, I1) = 1.");
@@ -117,7 +121,7 @@ public class Run {
         model.addRule("1: RelativeRank(U1, I1, I2) & SimilarItems(I1, I3) -> RelativeRank(U1, I1, I3) ^2");
 
         // pair-wise and point-wise relation
-        model.addRule("1: 0.5 * Preference(U1, I1) - 0.5 * Preference(U1, I2) + 0.5 <= RelativeRank(U1, I1, I2) ^2");
+        model.addRule("1: 0.5 * relevance(U1, I1) - 0.5 * relevance(U1, I2) + 0.5 <= RelativeRank(U1, I1, I2) ^2");
 
         log.debug("model: {}", model);
     }
@@ -139,9 +143,9 @@ public class Run {
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_obs.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_obs.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_relevance") + "_obs.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
@@ -151,17 +155,17 @@ public class Run {
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_sim_items") + "_obs.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_targets.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_relevance") + "_targets.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), targetsPartition);
         inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
                 dataSubPath, configs.getProperty(datasetName + "_rel_rank") + "_targets.txt").toString());
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
+        inserter = dataStore.getInserter(model.getStandardPredicate("relevance"), truthPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_truth.txt").toString());
+                dataSubPath, configs.getProperty(datasetName + "_relevance") + "_truth.txt").toString());
 
         inserter = dataStore.getInserter(model.getStandardPredicate("RelativeRank"), truthPartition);
         inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
@@ -170,7 +174,7 @@ public class Run {
     }
 
     /**
-     * Run inference to infer the unknown RelativeRanks and Preferences.
+     * Run inference to infer the unknown RelativeRanks and relevances.
      */
     private void runInference(Partition obsPartition, Partition targetsPartition) {
         log.info("Starting inference");
@@ -196,26 +200,26 @@ public class Run {
 
         (new File(OUTPUT_PATH)).mkdirs();
         (new File(Paths.get(OUTPUT_PATH, datasetName).toString())).mkdirs();
-        FileWriter writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"RelativeRank.txt").toString());
+        FileWriter rel_rank_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"RelativeRank.txt").toString());
 
         for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("RelativeRank"))) {
             for (Constant argument : atom.getArguments()) {
-                writer.write(argument.toString() + "\t");
+                rel_rank_writer.write(argument.toString() + "\t");
             }
-            writer.write("" + atom.getValue() + "\n");
+            rel_rank_writer.write("" + atom.getValue() + "\n");
         }
-        writer.close();
+        rel_rank_writer.close();
 
-        writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "Preference.txt").toString());
+        FileWriter relevance_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "relevance.txt").toString());
 
-        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Preference"))) {
+        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("relevance"))) {
             for (Constant argument : atom.getArguments()) {
-                writer.write(argument.toString() + "\t");
+                relevance_writer.write(argument.toString() + "\t");
             }
-            writer.write("" + atom.getValue() + "\n");
+            relevance_writer.write("" + atom.getValue() + "\n");
         }
 
-        writer.close();
+        relevance_writer.close();
         resultsDB.close();
     }
 
@@ -228,14 +232,14 @@ public class Run {
                 model.getStandardPredicate("SimilarItems")};
         Database resultsDB = dataStore.getDatabase(targetsPartition, closedPredicates);
         Database truthDB = dataStore.getDatabase(truthPartition,
-                new StandardPredicate[]{model.getStandardPredicate("Preference")});
+                new StandardPredicate[]{model.getStandardPredicate("relevance")});
 
         PersistedAtomManager atomManager = new PersistedAtomManager(resultsDB, false);
         TrainingMap trainingMap = new TrainingMap(atomManager, truthDB, true, false);
 
         // Using default threshold for relevance: 0.5
         RankingEvaluator eval = new RankingEvaluator();
-        eval.compute(trainingMap, model.getStandardPredicate("Preference"));
+        eval.compute(trainingMap, model.getStandardPredicate("relevance"));
         log.info(eval.getAllStats());
 
         resultsDB.close();

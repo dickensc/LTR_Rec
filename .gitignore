@@ -3,12 +3,23 @@
 *.DS_Store
 *.csv
 target/
+
+# data files
+data/__pycache__
+
 data/movie_lens/data
 data/movie_lens/ml-100k
 data/movie_lens/ml-100k.zip
+
 data/Jester/jester
 data/Jester/jester.zip
+
+data/yelp/yelp
+data/yelp/yelp.zip
+
+data/lastfm/lastfm
+data/lastfm/lastfm.zip
+
 classpath.out
 inferred-predicates
 pom.xml
-data/__pycache__
