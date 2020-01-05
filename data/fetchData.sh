@@ -6,7 +6,6 @@ function main() {
    local data_file=$3
    local data_dir=$4
    local data_sub_dir=$5
-   local predicate_construction_script=$6
 
    trap exit SIGINT
 
@@ -18,7 +17,6 @@ function main() {
 
    fetch_file "${data_url}" "${data_file}"
    extract_zip "${data_file}" "${data_sub_dir}" "${name}"
-   #construct_predicates "${predicate_construction_script}" "${data_sub_dir}" "${name}"
 
    popd > /dev/null || exit 1
 }
@@ -95,23 +93,6 @@ function extract_zip() {
       echo "ERROR: Failed to extract ${name} zip"
       exit 40
    fi
-}
-
-function construct_predicates() {
-  local predicate_construction_script=$1
-  local expectedDir=$2
-  local name=$3
-
-#  if [[ -e "${expectedDir}" ]]; then
-#    echo "${name} predicates found cached, skipping predicate construction."
-#    return
-#  fi
-  echo "Constructing the ${name} predicates"
-  python3 "${predicate_construction_script}"
-  if [[ "$?" -ne 0 ]]; then
-    echo "ERROR: Failed to run ${predicate_construction_script}"
-    exit 60
-  fi
 }
 
 main "$@"

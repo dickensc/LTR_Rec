@@ -8,6 +8,8 @@ target/
 data/__pycache__
 
 data/movie_lens/data
+data/movie_lens/movie_lens
+data/movie_lens/movie_lens.zip
 data/movie_lens/ml-100k
 data/movie_lens/ml-100k.zip
 
