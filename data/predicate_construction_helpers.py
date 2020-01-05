@@ -7,6 +7,7 @@ import numpy as np
 
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import pairwise_distances
 
 
 def target_preferences(item_canopy, queries):
@@ -45,9 +46,22 @@ def filter_and_write_targets(target_preference_series, observed_preferences_df, 
         write_mode = 'a'
 
 
+def cosine_similarity_frame_from_relevance(data_frame):
+    return pairwise_distances(data_frame, metric=cosine_similarity_from_relevance_arrays, force_all_finite='allow-nan')
+
+
+def cosine_similarity_from_relevance_arrays(x, y):
+    overlapping_dot_product = (x * y)
+    overlapping_indices = ~np.isnan(overlapping_dot_product)
+    if overlapping_indices.sum() == 0:
+        return 0
+    else:
+        return 1 - (overlapping_dot_product[overlapping_indices].sum() /
+                    (np.linalg.norm(x[overlapping_indices]) * np.linalg.norm(y[overlapping_indices])))
+
+
 def hac_canopy_from_distance(distance_series, distance_threshold=None, n_clusters=None):
     """
-
     :param distance_series:
     :param distance_threshold:
     :param n_clusters:
@@ -74,7 +88,7 @@ def hac_canopy_from_distance(distance_series, distance_threshold=None, n_cluster
     return canopy_series
 
 
-def query_relevance_cosine_similarity(relevance_df, query_index, item_index, relevance_index):
+def query_relevance_cosine_similarity(relevance_df, query_index, item_index):
     """
     Builds query similarity predicate from a ratings data frame.
 
@@ -88,21 +102,12 @@ def query_relevance_cosine_similarity(relevance_df, query_index, item_index, rel
     :param relevance_index: name of relevance field
     :return: multi index (query_id, item_id) Series
     """
-    query_ids = relevance_df[query_index].unique()
-    item_ids = relevance_df[item_index].unique()
+    query_relevance_frame = relevance_df.set_index([item_index, query_index]).unstack
 
-    query_relevance_vectors = pd.DataFrame(data=0, index=query_ids, columns=item_ids)
-    for q in query_ids:
-        query_relevance = relevance_df[relevance_df[query_index] == q]
-        query_relevance_vectors.loc[q, query_relevance[item_index].values] = query_relevance[relevance_index].values
+    query_cosine_similarity_frame = pd.DataFrame(cosine_similarity_frame_from_relevance(query_relevance_frame),
+                                                 index=query_relevance_frame.index, columns=query_relevance_frame.index)
 
-    query_cosine_similarity_series = pd.DataFrame(data=cosine_similarity(query_relevance_vectors),
-                                                  index=query_ids,
-                                                  columns=query_ids).stack()
-
-    query_cosine_similarity_series = query_cosine_similarity_series / query_cosine_similarity_series.max()
-
-    return query_cosine_similarity_series
+    return query_cosine_similarity_frame.stack()
 
 
 def query_item_preferences(ratings_frame, query_index, item_index, relevance_index):
