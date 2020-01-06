@@ -1,5 +1,7 @@
 package org.linqs.psl.LTR_Rec.models;
 
+import org.linqs.psl.LTR_Rec.ablationSettings.AblationSetting;
+
 import org.linqs.psl.model.predicate.StandardPredicate;
 import org.linqs.psl.model.term.ConstantType;
 import org.linqs.psl.java.PSLModel;
@@ -9,13 +11,33 @@ import org.linqs.psl.database.DataStore;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RankingPSLModel extends PSLModel {
     String dsName;
+    AblationSetting ablationSetting;
 
-    public RankingPSLModel(String dsname, DataStore datastore) {
+    public RankingPSLModel(String ablationSetting, String dsname, DataStore datastore) {
         super(datastore);
         this.dsName = dsname;
+        this.ablationSetting = new AblationSetting(ablationSetting);
+    }
+
+    public List<StandardPredicate> addAblationSettingPredicates(){
+        List<StandardPredicate> addedPredicates = new ArrayList<StandardPredicate>();
+
+        // Add ablation setting predicates
+        for(Map.Entry<String, ConstantType[]> PredicateTypeMapEntry: ablationSetting.getSettingPredicates().entrySet()){
+            addedPredicates.add(super.addPredicate(PredicateTypeMapEntry.getKey(), PredicateTypeMapEntry.getValue()));
+        }
+
+        //Set ablation setting blocking predicates
+        for(String predicateName: ablationSetting.getBlockingPredicateNames()){
+            StandardPredicate Canopy = super.getStandardPredicate(predicateName);
+            Canopy.setBlock(true);
+        }
+
+        return addedPredicates;
     }
 
     public List<StandardPredicate> addDefaultPredicates(){
@@ -64,6 +86,17 @@ public class RankingPSLModel extends PSLModel {
         }
 
         return addedPredicates;
+    }
+
+    public List<Rule> addAblationSettingRules() {
+        List<Rule> addedRules = new ArrayList<Rule>();
+
+        // Add ablation setting predicates
+        for(String Rule: ablationSetting.getSettingRules()){
+            addedRules.add(super.addRule(Rule));
+        }
+
+        return addedRules;
     }
 
     public List<Rule> addDefaultRules() {
@@ -134,6 +167,18 @@ public class RankingPSLModel extends PSLModel {
         return addedRules;
     }
 
+    public HashMap<String, String> getAblationObservedPredicateData(){
+        return ablationSetting.getObservedPredicateData();
+    }
+
+    public HashMap<String, String> getAblationTargetPredicateData(){
+        return ablationSetting.getTargetPredicateData();
+    }
+
+    public HashMap<String, String> getAblationTruthPredicateData(){
+        return ablationSetting.getTruthPredicateData();
+    }
+
     public HashMap<String, String> getDefaultObservedPredicateData(){
         HashMap<String, String> ObservedPredicateData = new HashMap<>();
 
@@ -180,7 +225,8 @@ public class RankingPSLModel extends PSLModel {
         return ObservedPredicateData;
     }
 
-    public HashMap<String, String> getDefaultTargetsPredicateData(){
+
+    public HashMap<String, String> getDefaultTargetPredicateData(){
         HashMap<String, String> TargetPredicateData = new HashMap<>();
 
         if(dsName.matches("movie_lens")) {
@@ -199,6 +245,7 @@ public class RankingPSLModel extends PSLModel {
 
         return TargetPredicateData;
     }
+
 
     public HashMap<String, String> getDefaultTruthPredicateData(){
         HashMap<String, String> TruthPredicateData = new HashMap<>();
@@ -220,33 +267,35 @@ public class RankingPSLModel extends PSLModel {
         return TruthPredicateData;
     }
 
-    public int getNumDefaultClosedPredicates() {
-        int numClosedPredicates = 0;
-        if(dsName.matches("movie_lens")) {
+    public StandardPredicate[] getAblationClosedPredicates(){
+        StandardPredicate[] closedPredicates;
 
-            numClosedPredicates = 2;
+        String[] closedPredicateNames = ablationSetting.getClosedPredicateNames();
 
-        } else if (dsName.matches("jester")) {
+        closedPredicates = new StandardPredicate[closedPredicateNames.length];
 
-            numClosedPredicates = 6;
-
-        } else if (dsName.matches("lastfm") || dsName.matches("yelp")) {
-
-            numClosedPredicates = 19;
-
+        int i;
+        for(i = 0; i < closedPredicateNames.length; i++) {
+            closedPredicates[i] = this.getStandardPredicate(closedPredicateNames[i]);
         }
-        return numClosedPredicates;
+
+        return closedPredicates;
+    }
+
+    public String[] getAblationOpenPredicateNames(){
+        return ablationSetting.getOpenPredicateNames();
     }
 
     public StandardPredicate[] getDefaultClosedPredicates() {
-        StandardPredicate[] closedPredicates = new StandardPredicate[this.getNumDefaultClosedPredicates()];
+        StandardPredicate[] closedPredicates;
 
         if(dsName.matches("movie_lens")) {
+            closedPredicates = new StandardPredicate[2];
             closedPredicates[0] = this.getStandardPredicate("SimMovies");
             closedPredicates[1] = this.getStandardPredicate("SimUsers");
 
         } else if(dsName.matches("jester")) {
-
+            closedPredicates = new StandardPredicate[6];
             closedPredicates[0] = this.getStandardPredicate("AvgJokeRatingObs");
             closedPredicates[1] = this.getStandardPredicate("AvgUserRatingObs");
             closedPredicates[2] = this.getStandardPredicate("Joke");
@@ -255,7 +304,7 @@ public class RankingPSLModel extends PSLModel {
             closedPredicates[5] = this.getStandardPredicate("SimObsRating");
 
         } else if(dsName.matches("lastfm") || dsName.matches("yelp")) {
-
+            closedPredicates = new StandardPredicate[19];
             closedPredicates[0] = this.getStandardPredicate("user");
             closedPredicates[1] = this.getStandardPredicate("item");
             closedPredicates[2] = this.getStandardPredicate("users_are_friends");
@@ -275,6 +324,9 @@ public class RankingPSLModel extends PSLModel {
             closedPredicates[16] = this.getStandardPredicate("sgd_rating");
             closedPredicates[17] = this.getStandardPredicate("bpmf_rating");
             closedPredicates[18] = this.getStandardPredicate("item_pearson_rating");
+
+        } else {
+            throw new IllegalStateException("data set name state became invalid: " + this.dsName);
         }
         return closedPredicates;
     }

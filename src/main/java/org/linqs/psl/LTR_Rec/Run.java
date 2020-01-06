@@ -55,7 +55,7 @@ public class Run {
     private String dataSubPath;
     private Properties configs;
 
-    public Run(String dsName, String dataPath) {
+    public Run(String dsName, String ablationSetting, String dataPath) {
         try {
             configs = readPropertiesFile(DATA_SOURCE_CONFIG_FILE_NAME);
         } catch (IOException ioe){
@@ -69,7 +69,7 @@ public class Run {
         // dataStore = new RDBMSDataStore(new H2DatabaseDriver(Type.Disk, dbPath, true));
         dataStore = new RDBMSDataStore(new PostgreSQLDriver("psl", true));
 
-        model = new RankingPSLModel(dsName, dataStore);
+        model = new RankingPSLModel(ablationSetting, dsName, dataStore);
 
         datasetName = dsName;
         dataSubPath = dataPath;
@@ -101,20 +101,8 @@ public class Run {
         // Default Predicates
         model.addDefaultPredicates();
 
-        // Similarity Predicates
-        model.addPredicate("SimilarUsers", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-        model.addPredicate("SimilarItems", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-
-        // Pairwise Predicate
-        model.addPredicate("Preference", ConstantType.UniqueStringID, ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-
-        // Blocking Predicates
-        model.addPredicate("QueryQueryCanopy", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-        StandardPredicate QueryQueryCanopy = model.getStandardPredicate("QueryQueryCanopy");
-        QueryQueryCanopy.setBlock(true);
-        model.addPredicate("ItemItemCanopy", ConstantType.UniqueStringID, ConstantType.UniqueStringID);
-        StandardPredicate ItemItemCanopy = model.getStandardPredicate("ItemItemCanopy");
-        ItemItemCanopy.setBlock(true);
+        // Add Ablation Setting Predicates
+        model.addAblationSettingPredicates();
     }
 
     /**
@@ -126,13 +114,8 @@ public class Run {
         // Default rules
         model.addDefaultRules();
 
-        // pair-wise preferences
-        model.addRule("Preference(U1, I1, I2) + Preference(U1, I2, I1) = 1.");
-        model.addRule("1: Preference(U1, I1, I2) & SimilarUsers(U1, U2) & QueryQueryCanopy(U1, U2) & ItemItemCanopy(I1, I2) -> Preference(U2, I1, I2) ^2");
-        model.addRule("1: Preference(U1, I1, I2) & SimilarItems(I2, I3) & ItemItemCanopy(I1, I2) & ItemItemCanopy(I1, I3) & ItemItemCanopy(I2, I3) -> Preference(U1, I1, I3) ^2");
-
-        // pair-wise and point-wise relation
-        model.addRule("1: 0.5 * RATING(U1, I1) - 0.5 * RATING(U1, I2) + 0.5 <= Preference(U1, I1, I2) ^2");
+        // Ablation Setting Rules
+        model.addAblationSettingRules();
 
         log.debug("model: {}", model);
     }
@@ -155,37 +138,24 @@ public class Run {
                     dataSubPath, ObservedPredicateData.getValue() + "_obs.txt").toString());
         }
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_obs.txt").toString());
-
-        inserter = dataStore.getInserter(model.getStandardPredicate("SimilarUsers"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_sim_users") + "_obs.txt").toString());
-
-        inserter = dataStore.getInserter(model.getStandardPredicate("SimilarItems"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_sim_items") + "_obs.txt").toString());
-
-        inserter = dataStore.getInserter(model.getStandardPredicate("QueryQueryCanopy"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_query_query_canopy") + "_obs.txt").toString());
-
-        inserter = dataStore.getInserter(model.getStandardPredicate("ItemItemCanopy"), obsPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_item_item_canopy") + "_obs.txt").toString());
+        for(Map.Entry ObservedPredicateData: model.getAblationObservedPredicateData().entrySet()){
+            inserter = dataStore.getInserter(model.getStandardPredicate((String)ObservedPredicateData.getKey()), obsPartition);
+            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
+                    configs.getProperty(datasetName + ObservedPredicateData.getValue()) + "_obs.txt").toString());
+        }
 
         // Targets
-        for(Map.Entry TargetsPredicateData: model.getDefaultTargetsPredicateData().entrySet()){
+        for(Map.Entry TargetsPredicateData: model.getDefaultTargetPredicateData().entrySet()){
             inserter = dataStore.getInserter(model.getStandardPredicate((String)TargetsPredicateData.getKey()), targetsPartition);
             inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName,
                     dataSubPath, TargetsPredicateData.getValue() + "_targets.txt").toString());
         }
 
-
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), targetsPartition);
-        inserter.loadDelimitedData(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_targets.txt").toString());
+        for(Map.Entry TargetsPredicateData: model.getAblationTargetPredicateData().entrySet()){
+            inserter = dataStore.getInserter(model.getStandardPredicate((String)TargetsPredicateData.getKey()), targetsPartition);
+            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
+                    configs.getProperty(datasetName + TargetsPredicateData.getValue()) + "_targets.txt").toString());
+        }
 
         // Truths
         for(Map.Entry TruthPredicateData: model.getDefaultTruthPredicateData().entrySet()){
@@ -194,9 +164,11 @@ public class Run {
                     dataSubPath, TruthPredicateData.getValue() + "_truth.txt").toString());
         }
 
-        inserter = dataStore.getInserter(model.getStandardPredicate("Preference"), truthPartition);
-        inserter.loadDelimitedDataTruth(Paths.get(DATA_PATH, datasetName,
-                dataSubPath, configs.getProperty(datasetName + "_pref") + "_truth.txt").toString());
+        for(Map.Entry TruthPredicateData: model.getAblationTruthPredicateData().entrySet()){
+            inserter = dataStore.getInserter(model.getStandardPredicate((String)TruthPredicateData.getKey()), truthPartition);
+            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
+                    configs.getProperty(datasetName + TruthPredicateData.getValue()) + "_truth.txt").toString());
+        }
 
     }
 
@@ -206,17 +178,14 @@ public class Run {
     private void runInference(Partition obsPartition, Partition targetsPartition) {
         log.info("Starting inference");
 
-        int numClosedPredicates = model.getNumDefaultClosedPredicates();
-
-        StandardPredicate[] closedPredicates = new StandardPredicate[numClosedPredicates + 2];
         StandardPredicate[] DefaultClosedPredicates = model.getDefaultClosedPredicates();
-
-        int i;
-        for(i = 0; i < numClosedPredicates; i ++){
-            closedPredicates[i] = DefaultClosedPredicates[i];
-        }
-        closedPredicates[numClosedPredicates] = model.getStandardPredicate("QueryQueryCanopy");
-        closedPredicates[numClosedPredicates + 1] = model.getStandardPredicate("ItemItemCanopy");
+        StandardPredicate[] AblationClosedPredicates = model.getAblationClosedPredicates();
+        StandardPredicate[] closedPredicates = new StandardPredicate[DefaultClosedPredicates.length +
+                AblationClosedPredicates.length];
+        System.arraycopy(DefaultClosedPredicates, 0, closedPredicates,
+                0, DefaultClosedPredicates.length);
+        System.arraycopy(AblationClosedPredicates, 0, closedPredicates,
+                DefaultClosedPredicates.length, AblationClosedPredicates.length);
 
         Database inferDB = dataStore.getDatabase(targetsPartition, closedPredicates, obsPartition);
 
@@ -238,15 +207,20 @@ public class Run {
 
         (new File(OUTPUT_PATH)).mkdirs();
         (new File(Paths.get(OUTPUT_PATH, datasetName).toString())).mkdirs();
-        FileWriter pref_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,"Preference.txt").toString());
 
-        for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate("Preference"))) {
-            for (Constant argument : atom.getArguments()) {
-                pref_writer.write(argument.toString() + "\t");
+        for(String OpenPredicateName: model.getAblationOpenPredicateNames()){
+            FileWriter pref_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,
+                    OpenPredicateName + ".txt").toString());
+
+            for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate(OpenPredicateName))) {
+                for (Constant argument : atom.getArguments()) {
+                    pref_writer.write(argument.toString() + "\t");
+                }
+                pref_writer.write("" + atom.getValue() + "\n");
             }
-            pref_writer.write("" + atom.getValue() + "\n");
+
+            pref_writer.close();
         }
-        pref_writer.close();
 
         FileWriter rank_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "Ranking.txt").toString());
 
@@ -267,17 +241,15 @@ public class Run {
      * relative to the defined truth.
      */
     private void evalResults(Partition targetsPartition, Partition truthPartition) {
-        int numClosedPredicates = model.getNumDefaultClosedPredicates();
 
-        StandardPredicate[] closedPredicates = new StandardPredicate[numClosedPredicates + 2];
         StandardPredicate[] DefaultClosedPredicates = model.getDefaultClosedPredicates();
-
-        int i;
-        for(i = 0; i < numClosedPredicates; i ++){
-            closedPredicates[i] = DefaultClosedPredicates[i];
-        }
-        closedPredicates[numClosedPredicates] = model.getStandardPredicate("QueryQueryCanopy");
-        closedPredicates[numClosedPredicates + 1] = model.getStandardPredicate("ItemItemCanopy");
+        StandardPredicate[] AblationClosedPredicates = model.getAblationClosedPredicates();
+        StandardPredicate[] closedPredicates = new StandardPredicate[DefaultClosedPredicates.length +
+                AblationClosedPredicates.length];
+        System.arraycopy(DefaultClosedPredicates, 0, closedPredicates,
+                0, DefaultClosedPredicates.length);
+        System.arraycopy(AblationClosedPredicates, 0, closedPredicates,
+                DefaultClosedPredicates.length, AblationClosedPredicates.length);
 
         Database resultsDB = dataStore.getDatabase(targetsPartition, closedPredicates);
         Database truthDB = dataStore.getDatabase(truthPartition,
@@ -322,9 +294,10 @@ public class Run {
      */
     public static void main(String[] args) {
         String datasetName = args[0];
-        String dataPath = args[1];
+        String ablationSetting = args[1];
+        String dataPath = args[2];
 
-        Run run = new Run(datasetName, dataPath);
+        Run run = new Run(datasetName, ablationSetting, dataPath);
         run.run();
     }
 

@@ -8,6 +8,7 @@ readonly FETCH_DATA_SCRIPT='fetchData.sh'
 readonly DATA_URL 'https://linqs-data.soe.ucsc.edu/public/dickens-ranking/'
 
 declare datasets=("movie_lens" "jester" "yelp" "lastfm")
+declare ablationSettings=("Default" "Pairwise Preference 1")
 
 declare -A FINAL_DATA_PATH
 FINAL_DATA_PATH['movie_lens']='movie_lens'
@@ -51,11 +52,13 @@ function getData() {
 }
 
 function parseArgs() {
-  while getopts 'ad:' opt;
+  while getopts 'ab:cd:' opt;
   do
      case "$opt" in
         a ) datasets=("movie_lens" "jester" "yelp" "lastfm") ;;
-        d ) datasets=("$OPTARG") ;;
+        b ) datasets=("$OPTARG") ;;
+        c ) ablationSettings=("Default" "Pairwise Preference 1") ;;
+        d ) ablationSettings=("$OPTARG") ;;
         ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
      esac
   done
@@ -67,21 +70,26 @@ function helpFunction()
 {
    echo ""
    echo "Usage: $0 -a -d parameterD"
-   echo -e "\t-a run inference on all datasets"
-   echo -e "\t-d the name of the dataset you would like to run inference on: ${datasets[*]}"
+   echo -e "\t-a run inference on all datasets (Default)"
+   echo -e "\t-b the name of the dataset you would like to run inference on: ${datasets[*]}"
+   echo -e "\t-c run inference on all settings (Default)"
+   echo -e "\t-d the name of the ablation study setting you would like to run inference with: ${ablationSettings[*]}"
    exit 1 # Exit script after printing help
 }
 
 function run() {
    echo "Running PSL"
 
-   for datasetName in "${datasets[@]}"
+   for setting in "${ablationSettings[@]}"
    do
-     java -Xms4000m -Xmx30000m -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${FINAL_DATA_PATH[$datasetName]}"
-     if [[ "$?" -ne 0 ]]; then
-        echo 'ERROR: Failed to run'
-        exit 60
-     fi
+     for datasetName in "${datasets[@]}"
+     do
+       java -Xms4000m -Xmx30000m -cp ./target/classes:"$(cat "${CLASSPATH_FILE}")" "${TARGET_CLASS}" "${datasetName}" "${setting}" "${FINAL_DATA_PATH[$datasetName]}"
+       if [[ "$?" -ne 0 ]]; then
+          echo 'ERROR: Failed to run'
+          exit 60
+       fi
+     done
    done
 }
 
