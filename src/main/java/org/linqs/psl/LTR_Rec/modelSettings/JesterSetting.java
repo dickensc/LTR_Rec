@@ -74,15 +74,41 @@ public class JesterSetting extends ModelSetting {
 
     @Override
     public HashMap<String, String> getTargetPredicateData() {
+        return getTargetPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getTargetPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> TargetPredicateData = new HashMap<>();
+
+        // Default
         TargetPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TargetPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
         return TargetPredicateData;
     }
 
     @Override
     public HashMap<String, String> getTruthPredicateData() {
+        return getTargetPredicateData(new String[0]);
+
+    }
+
+    @Override
+    public HashMap<String, String> getTruthPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> TruthPredicateData = new HashMap<>();
+
+        // Default
         TruthPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TruthPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return TruthPredicateData;
     }
 
@@ -93,17 +119,11 @@ public class JesterSetting extends ModelSetting {
             case "Preference":
                 prefix = "rel_rank";
                 break;
-            case "SimilarUsers":
+            case "SimilarUsersBlock":
                 prefix = "sim_users";
                 break;
-            case "SimilarItems":
+            case "SimilarItemsBlock":
                 prefix = "sim_jokes";
-                break;
-            case "QueryQueryCanopy":
-                prefix = "user_user_canopy";
-                break;
-            case "ItemItemCanopy":
-                prefix = "joke_joke_canopy";
                 break;
             default:
                 throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for Jester");

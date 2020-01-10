@@ -26,26 +26,87 @@ public class MovieLensSetting extends ModelSetting {
         return predicates;
     }
 
+    private String predicateNameToDataPrefix(String PredicateName) {
+        String prefix;
+
+        switch (PredicateName){
+            case "Preference":
+                prefix = "rel_rank";
+                break;
+            case "SimilarUsersBlock":
+                prefix = "sim_users";
+                break;
+            case "SimilarItemsBlock":
+                prefix = "sim_items";
+                break;
+            default:
+                throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for MovieLens");
+        }
+
+        return prefix;
+    }
+
+
     @Override
     public HashMap<String, String> getObservedPredicateData() {
+        return getObservedPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getObservedPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> ObservedPredicateData = new HashMap<>();
+
+        // Default
         ObservedPredicateData.put("Rating", "rating");
         ObservedPredicateData.put("SimMovies", "sim_items");
         ObservedPredicateData.put("SimUsers", "sim_users");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            ObservedPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
+
         return ObservedPredicateData;
     }
 
     @Override
     public HashMap<String, String> getTargetPredicateData() {
+        return getTargetPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getTargetPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> TargetPredicateData = new HashMap<>();
+
+        // Default
         TargetPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TargetPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return TargetPredicateData;
     }
 
     @Override
     public HashMap<String, String> getTruthPredicateData() {
+        return getTruthPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getTruthPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> TruthPredicateData = new HashMap<>();
+
+        // default
         TruthPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TruthPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return TruthPredicateData;
     }
 

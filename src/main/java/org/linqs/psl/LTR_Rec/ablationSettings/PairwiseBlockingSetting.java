@@ -52,10 +52,8 @@ public class PairwiseBlockingSetting extends AblationSetting {
         String[] ObservedPredicateData = new String[5];
 
         ObservedPredicateData[0] = "Preference";
-        ObservedPredicateData[1] = "SimilarUsers";
-        ObservedPredicateData[2] = "SimilarItems";
-        ObservedPredicateData[3] = "QueryQueryCanopy";
-        ObservedPredicateData[4] = "ItemItemCanopy";
+        ObservedPredicateData[1] = "SimilarUsersBlock";
+        ObservedPredicateData[2] = "SimilarItemsBlock";
 
         return ObservedPredicateData;
     }
@@ -73,7 +71,7 @@ public class PairwiseBlockingSetting extends AblationSetting {
     public String[] getTruthPredicateNames() {
         /// Assuming Rating predicate is in default setting
 
-        String[] TruthPredicateData = new String[];
+        String[] TruthPredicateData = new String[1];
         TruthPredicateData[0] = "Preference";
         return TruthPredicateData;
     }
@@ -96,8 +94,8 @@ public class PairwiseBlockingSetting extends AblationSetting {
         String[] closedPredicates;
 
         closedPredicates = new String[2];
-        closedPredicates[0] = "QueryQueryCanopy";
-        closedPredicates[1] = "ItemItemCanopy";
+        closedPredicates[0] = "SimilarUsersBlock";
+        closedPredicates[1] = "SimilarItemsBlock";
 
         return closedPredicates;
     }
@@ -106,7 +104,7 @@ public class PairwiseBlockingSetting extends AblationSetting {
     public String[] getBlockingPredicateNames() {
         String[] blockingPredicateNames;
         // Add Blocking Predicates
-        blockingPredicateNames = new String[] {"QueryQueryCanopy", "ItemItemCanopy"};
+        blockingPredicateNames = new String[] {"SimilarUsersBlock", "SimilarItemsBlock"};
         return blockingPredicateNames;
     }
 }

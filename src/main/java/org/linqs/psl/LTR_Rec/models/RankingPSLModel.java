@@ -11,6 +11,8 @@ import org.linqs.psl.model.rule.Rule;
 import org.linqs.psl.database.DataStore;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class RankingPSLModel extends PSLModel {
@@ -74,21 +76,15 @@ public class RankingPSLModel extends PSLModel {
 
 
     public HashMap<String, String> getObservedPredicateData(){
-        HashMap<String, String> observedPredicateData = ablationSetting.getObservedPredicateData();
-        observedPredicateData.putAll(defaultModelSetting.getObservedPredicateData());
-        return observedPredicateData;
+        return defaultModelSetting.getObservedPredicateData(ablationSetting.getObservedPredicateNames());
     }
 
     public HashMap<String, String> getTargetPredicateData(){
-        HashMap<String, String> targetPredicateData = ablationSetting.getTargetPredicateData();
-        targetPredicateData.putAll(defaultModelSetting.getTargetPredicateData());
-        return targetPredicateData;
+        return defaultModelSetting.getTargetPredicateData(ablationSetting.getTargetPredicateNames());
     }
 
     public HashMap<String, String> getTruthPredicateData(){
-        HashMap<String, String> truthPredicateData = ablationSetting.getTruthPredicateData();
-        truthPredicateData.putAll(defaultModelSetting.getTruthPredicateData());
-        return truthPredicateData;
+        return defaultModelSetting.getTruthPredicateData(ablationSetting.getTruthPredicateNames());
     }
 
 

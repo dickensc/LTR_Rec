@@ -77,9 +77,36 @@ public class YelpSetting extends ModelSetting {
         return predicates;
     }
 
+    private String predicateNameToDataPrefix(String PredicateName) {
+        String prefix;
+
+        switch (PredicateName){
+            case "Preference":
+                prefix = "rel_rank";
+                break;
+            case "SimilarUsersBlock":
+                prefix = "sim_cosine_users";
+                break;
+            case "SimilarItemsBlock":
+                prefix = "sim_cosine_items";
+                break;
+            default:
+                throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for Yelp");
+        }
+
+        return prefix;
+    }
+
     @Override
     public HashMap<String, String> getObservedPredicateData() {
+        return getObservedPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getObservedPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> ObservedPredicateData = new HashMap<>();
+
+        // Default
         ObservedPredicateData.put("user", "user");
         ObservedPredicateData.put("item", "item");
         ObservedPredicateData.put("users_are_friends", "users_are_friends");
@@ -99,47 +126,55 @@ public class YelpSetting extends ModelSetting {
         ObservedPredicateData.put("sgd_rating", "sgd_rating");
         ObservedPredicateData.put("bpmf_rating", "bpmf_rating");
         ObservedPredicateData.put("item_pearson_rating", "item_pearson_rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            ObservedPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return ObservedPredicateData;
     }
 
     @Override
     public HashMap<String, String> getTargetPredicateData() {
+        return getTargetPredicateData(new String[0]);
+
+    }
+
+    @Override
+    public HashMap<String, String> getTargetPredicateData(String[] ablationPredicateNames) {
         HashMap<String, String> TargetPredicateData = new HashMap<>();
+
+        // Default
         TargetPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TargetPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return TargetPredicateData;
     }
 
     @Override
     public HashMap<String, String> getTruthPredicateData() {
-        HashMap<String, String> TruthPredicateData = new HashMap<>();
-        TruthPredicateData.put("Rating", "rating");
-        return TruthPredicateData;
+        return getTruthPredicateData(new String[0]);
+
     }
 
-    private String predicateNameToDataPrefix(String PredicateName) {
-        String prefix;
+    @Override
+    public HashMap<String, String> getTruthPredicateData(String[] ablationPredicateNames) {
+        HashMap<String, String> TruthPredicateData = new HashMap<>();
 
-        switch (PredicateName){
-            case "Preference":
-                prefix = "rel_rank";
-                break;
-            case "SimilarUsers":
-                prefix = "sim_cosine_users";
-                break;
-            case "SimilarItems":
-                prefix = "sim_cosine_items";
-                break;
-            case "QueryQueryCanopy":
-                prefix = "user_user_canopy";
-                break;
-            case "ItemItemCanopy":
-                prefix = "joke_joke_canopy";
-                break;
-            default:
-                throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for Jester");
+        // Default
+        TruthPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            TruthPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
         }
 
-        return prefix;
+        return TruthPredicateData;
     }
 
     @Override
