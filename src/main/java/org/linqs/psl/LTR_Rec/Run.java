@@ -98,11 +98,11 @@ public class Run {
      * Defines the logical predicates used in this model.
      */
     private void definePredicates() {
-        // Default Predicates
-        model.addDefaultPredicates();
+        log.info("Defining model predicates");
 
-        // Add Ablation Setting Predicates
-        model.addAblationSettingPredicates();
+        model.addPredicates();
+
+        log.debug("model: {}", model);
     }
 
     /**
@@ -111,11 +111,7 @@ public class Run {
     private void defineRules() {
         log.info("Defining model rules");
 
-        // Default rules
-        model.addDefaultRules();
-
-        // Ablation Setting Rules
-        model.addAblationSettingRules();
+        model.addRules();
 
         log.debug("model: {}", model);
     }
@@ -132,42 +128,25 @@ public class Run {
 
         Inserter inserter;
         // Observed
-        for(Map.Entry ObservedPredicateData: model.getDefaultObservedPredicateData().entrySet()){
+        for(Map.Entry ObservedPredicateData: model.getObservedPredicateData().entrySet()){
             inserter = dataStore.getInserter(model.getStandardPredicate((String)ObservedPredicateData.getKey()), obsPartition);
+            System.out.println(ObservedPredicateData.getValue());
             inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName,
-                    dataSubPath, ObservedPredicateData.getValue() + "_obs.txt").toString());
-        }
-
-        for(Map.Entry ObservedPredicateData: model.getAblationObservedPredicateData().entrySet()){
-            inserter = dataStore.getInserter(model.getStandardPredicate((String)ObservedPredicateData.getKey()), obsPartition);
-            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
-                    configs.getProperty(datasetName + ObservedPredicateData.getValue()) + "_obs.txt").toString());
+                    dataSubPath, ObservedPredicateData.getValue()+ "_obs.txt").toString());
         }
 
         // Targets
-        for(Map.Entry TargetsPredicateData: model.getDefaultTargetPredicateData().entrySet()){
+        for(Map.Entry TargetsPredicateData: model.getTargetPredicateData().entrySet()){
             inserter = dataStore.getInserter(model.getStandardPredicate((String)TargetsPredicateData.getKey()), targetsPartition);
             inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName,
                     dataSubPath, TargetsPredicateData.getValue() + "_targets.txt").toString());
         }
 
-        for(Map.Entry TargetsPredicateData: model.getAblationTargetPredicateData().entrySet()){
-            inserter = dataStore.getInserter(model.getStandardPredicate((String)TargetsPredicateData.getKey()), targetsPartition);
-            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
-                    configs.getProperty(datasetName + TargetsPredicateData.getValue()) + "_targets.txt").toString());
-        }
-
         // Truths
-        for(Map.Entry TruthPredicateData: model.getDefaultTruthPredicateData().entrySet()){
-            inserter = dataStore.getInserter(model.getStandardPredicate((String)TruthPredicateData.getKey()), truthPartition);
+        for(Map.Entry TruthPredicateData: model.getTruthPredicateData().entrySet()) {
+            inserter = dataStore.getInserter(model.getStandardPredicate((String) TruthPredicateData.getKey()), truthPartition);
             inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName,
                     dataSubPath, TruthPredicateData.getValue() + "_truth.txt").toString());
-        }
-
-        for(Map.Entry TruthPredicateData: model.getAblationTruthPredicateData().entrySet()){
-            inserter = dataStore.getInserter(model.getStandardPredicate((String)TruthPredicateData.getKey()), truthPartition);
-            inserter.loadDelimitedDataAutomatic(Paths.get(DATA_PATH, datasetName, dataSubPath,
-                    configs.getProperty(datasetName + TruthPredicateData.getValue()) + "_truth.txt").toString());
         }
 
     }
@@ -178,14 +157,7 @@ public class Run {
     private void runInference(Partition obsPartition, Partition targetsPartition) {
         log.info("Starting inference");
 
-        StandardPredicate[] DefaultClosedPredicates = model.getDefaultClosedPredicates();
-        StandardPredicate[] AblationClosedPredicates = model.getAblationClosedPredicates();
-        StandardPredicate[] closedPredicates = new StandardPredicate[DefaultClosedPredicates.length +
-                AblationClosedPredicates.length];
-        System.arraycopy(DefaultClosedPredicates, 0, closedPredicates,
-                0, DefaultClosedPredicates.length);
-        System.arraycopy(AblationClosedPredicates, 0, closedPredicates,
-                DefaultClosedPredicates.length, AblationClosedPredicates.length);
+        StandardPredicate[] closedPredicates = model.getClosedPredicates();
 
         Database inferDB = dataStore.getDatabase(targetsPartition, closedPredicates, obsPartition);
 
@@ -208,31 +180,20 @@ public class Run {
         (new File(OUTPUT_PATH)).mkdirs();
         (new File(Paths.get(OUTPUT_PATH, datasetName).toString())).mkdirs();
 
-        for(String OpenPredicateName: model.getAblationOpenPredicateNames()){
-            FileWriter pref_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,
+        for(String OpenPredicateName: model.getOpenPredicateNames()){
+            FileWriter writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName,
                     OpenPredicateName + ".txt").toString());
 
             for (GroundAtom atom : resultsDB.getAllGroundAtoms(model.getStandardPredicate(OpenPredicateName))) {
                 for (Constant argument : atom.getArguments()) {
-                    pref_writer.write(argument.toString() + "\t");
+                    writer.write(argument.toString() + "\t");
                 }
-                pref_writer.write("" + atom.getValue() + "\n");
+                writer.write("" + atom.getValue() + "\n");
             }
 
-            pref_writer.close();
+            writer.close();
         }
 
-        FileWriter rank_writer = new FileWriter(Paths.get(OUTPUT_PATH, datasetName, "Ranking.txt").toString());
-
-        for (GroundAtom atom : resultsDB.getAllGroundAtoms(
-                model.getStandardPredicate(configs.getProperty(datasetName + "_RankPredicate")))) {
-            for (Constant argument : atom.getArguments()) {
-                rank_writer.write(argument.toString() + "\t");
-            }
-            rank_writer.write("" + atom.getValue() + "\n");
-        }
-
-        rank_writer.close();
         resultsDB.close();
     }
 
@@ -242,14 +203,7 @@ public class Run {
      */
     private void evalResults(Partition targetsPartition, Partition truthPartition) {
 
-        StandardPredicate[] DefaultClosedPredicates = model.getDefaultClosedPredicates();
-        StandardPredicate[] AblationClosedPredicates = model.getAblationClosedPredicates();
-        StandardPredicate[] closedPredicates = new StandardPredicate[DefaultClosedPredicates.length +
-                AblationClosedPredicates.length];
-        System.arraycopy(DefaultClosedPredicates, 0, closedPredicates,
-                0, DefaultClosedPredicates.length);
-        System.arraycopy(AblationClosedPredicates, 0, closedPredicates,
-                DefaultClosedPredicates.length, AblationClosedPredicates.length);
+        StandardPredicate[] closedPredicates = model.getClosedPredicates();
 
         Database resultsDB = dataStore.getDatabase(targetsPartition, closedPredicates);
         Database truthDB = dataStore.getDatabase(truthPartition,

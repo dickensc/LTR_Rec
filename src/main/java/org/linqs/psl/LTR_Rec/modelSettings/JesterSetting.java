@@ -9,7 +9,7 @@ public class JesterSetting extends ModelSetting {
 
     @Override
     public String[] getSettingRules() {
-        String[] rules = new String[2];
+        String[] rules = new String[8];
 
         // If J1 and J2 have similar observed ratings, then U will rate them similarly.
         rules[0] = "1: SIMOBSRATING(J1, J2) & RATING(U, J1) >> RATING(U, J2) ^2";
@@ -48,7 +48,14 @@ public class JesterSetting extends ModelSetting {
 
     @Override
     public HashMap<String, String> getObservedPredicateData() {
+        return getObservedPredicateData(new String[0]);
+    }
+
+    @Override
+    public HashMap<String, String> getObservedPredicateData(String[] ablationPredicateNames){
         HashMap<String, String> ObservedPredicateData = new HashMap<>();
+
+        // Default
         ObservedPredicateData.put("AvgJokeRatingObs", "avgJokeRatingObs");
         ObservedPredicateData.put("AvgUserRatingObs", "avgUserRatingObs");
         ObservedPredicateData.put("Joke", "joke");
@@ -56,8 +63,14 @@ public class JesterSetting extends ModelSetting {
         ObservedPredicateData.put("User", "user");
         ObservedPredicateData.put("SimObsRating", "simObsRating");
         ObservedPredicateData.put("Rating", "rating");
+
+        // Ablation predicates
+        for(String predicateName: ablationPredicateNames){
+            ObservedPredicateData.put(predicateName, this.predicateNameToDataPrefix(predicateName));
+        }
+
         return ObservedPredicateData;
-    }
+    };
 
     @Override
     public HashMap<String, String> getTargetPredicateData() {
@@ -71,6 +84,32 @@ public class JesterSetting extends ModelSetting {
         HashMap<String, String> TruthPredicateData = new HashMap<>();
         TruthPredicateData.put("Rating", "rating");
         return TruthPredicateData;
+    }
+
+    private String predicateNameToDataPrefix(String PredicateName) {
+        String prefix;
+
+        switch (PredicateName){
+            case "Preference":
+                prefix = "rel_rank";
+                break;
+            case "SimilarUsers":
+                prefix = "sim_users";
+                break;
+            case "SimilarItems":
+                prefix = "sim_jokes";
+                break;
+            case "QueryQueryCanopy":
+                prefix = "user_user_canopy";
+                break;
+            case "ItemItemCanopy":
+                prefix = "joke_joke_canopy";
+                break;
+            default:
+                throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for Jester");
+        }
+
+        return prefix;
     }
 
     @Override

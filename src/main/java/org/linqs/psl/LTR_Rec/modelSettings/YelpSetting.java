@@ -11,41 +11,41 @@ public class YelpSetting extends ModelSetting {
     public String[] getSettingRules() {
         String[] rules = new String[21];
         // Similarities like Pearson, Cosine, and Adjusted Cosine Similarity between items.
-        rules[0] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_pearson_items(I1,I2) >> rating(U,I2)";
-        rules[1] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_cosine_items(I1,I2) >> rating(U,I2)";
-        rules[2] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_adjcos_items(I1,I2) >> rating(U,I2)";
+        rules[0] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_pearson_items(I1,I2) >> rating(U,I2)^2";
+        rules[1] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_cosine_items(I1,I2) >> rating(U,I2)^2";
+        rules[2] = "1.0 :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_adjcos_items(I1,I2) >> rating(U,I2)^2";
 
         // Similarities like Pearson and Cosine Similarity between users.
-        rules[3] = "1.0 :  rated(U1,I) & rated(U2,I) & rating(U1,I) & sim_pearson_users(U1,U2) >> rating(U2,I)";
-        rules[4] = "1.0 :  rated(U1,I) & rated(U2,I) & rating(U1,I) & sim_cosine_users(U1,U2) >> rating(U2,I)";
+        rules[3] = "1.0 :  rated(U1,I) & rated(U2,I) & rating(U1,I) & sim_pearson_users(U1,U2) >> rating(U2,I)^2";
+        rules[4] = "1.0 :  rated(U1,I) & rated(U2,I) & rating(U1,I) & sim_cosine_users(U1,U2) >> rating(U2,I)^2";
 
         // Other low dimension space similarities like Matrix Factorization Cosine and Euclidean Similarity between users.
-        rules[5] = "1.0 :  user(U1) & user(U2) & item(I) & rating(U1,I) & rated(U1,I) &rated(U2,I) & sim_mf_cosine_users(U1,U2) >> rating(U2,I)";
-        rules[6] = "1.0 :  user(U1) & user(U2) & item(I) & rating(U1,I) & rated(U1,I) &rated(U2,I) & sim_mf_euclidean_users(U1,U2) >> rating(U2,I)";
+        rules[5] = "1.0 :  user(U1) & user(U2) & item(I) & rating(U1,I) & rated(U1,I) &rated(U2,I) & sim_mf_cosine_users(U1,U2) >> rating(U2,I)^2";
+        rules[6] = "1.0 :  user(U1) & user(U2) & item(I) & rating(U1,I) & rated(U1,I) &rated(U2,I) & sim_mf_euclidean_users(U1,U2) >> rating(U2,I)^2";
 
         // Other low dimension space similarities like Matrix Factorization Cosine and Euclidean Similarity between items.
-        rules[7] = "1.0 :  user(U) & item(I1) & item(I2) & rating(U,I1) & rated(U,I1) & rated(U,I2) & sim_mf_cosine_items(I1,I2) >> rating(U,I2)";
-        rules[8] = "1.0 :  user(U) & item(I1) & item(I2) & rating(U,I1) & rated(U,I1) & rated(U,I2) & sim_mf_euclidean_items(I1,I2) >> rating(U,I2)";
+        rules[7] = "1.0 :  user(U) & item(I1) & item(I2) & rating(U,I1) & rated(U,I1) & rated(U,I2) & sim_mf_cosine_items(I1,I2) >> rating(U,I2)^2";
+        rules[8] = "1.0 :  user(U) & item(I1) & item(I2) & rating(U,I1) & rated(U,I1) & rated(U,I2) & sim_mf_euclidean_items(I1,I2) >> rating(U,I2)^2";
 
         // Predictions by different other methods like SGD, Item based Pearson methods, and BPMF methods.
-        rules[9] = "1.0 : sgd_rating(U,I) >> rating(U,I)";
-        rules[10] = "1.0 : rating(U,I) >> sgd_rating(U,I)";
-        rules[11] = "1.0 : item_pearson_rating(U,I) >> rating(U,I)";
-        rules[12] = "1.0 : rating(U,I) >> item_pearson_rating(U,I)";
-        rules[13] = "1.0 : bpmf_rating(U,I) >> rating(U,I)";
-        rules[14] = "1.0 : rating(U,I) >> bpmf_rating(U,I)";
+        rules[9] = "1.0 : sgd_rating(U,I) >> rating(U,I)^2";
+        rules[10] = "1.0 : rating(U,I) >> sgd_rating(U,I)^2";
+        rules[11] = "1.0 : item_pearson_rating(U,I) >> rating(U,I)^2";
+        rules[12] = "1.0 : rating(U,I) >> item_pearson_rating(U,I)^2";
+        rules[13] = "1.0 : bpmf_rating(U,I) >> rating(U,I)^2";
+        rules[14] = "1.0 : rating(U,I) >> bpmf_rating(U,I)^2";
 
         // Average prior of user rating and item ratings.
-        rules[15] = "1.0  : user(U) & item(I) & rated(U,I) & avg_user_rating(U) >> rating(U,I)";
-        rules[16] = "1.0  : user(U) & item(I) & rated(U,I) & rating(U,I) >> avg_user_rating(U)";
-        rules[17] = "1.0  : user(U) & item(I) & rated(U,I) & avg_item_rating(I) >> rating(U,I)";
-        rules[18] = "1.0  : user(U) & item(I) & rated(U,I) & rating(U,I) >> avg_item_rating(I)";
+        rules[15] = "1.0  : user(U) & item(I) & rated(U,I) & avg_user_rating(U) >> rating(U,I)^2";
+        rules[16] = "1.0  : user(U) & item(I) & rated(U,I) & rating(U,I) >> avg_user_rating(U)^2";
+        rules[17] = "1.0  : user(U) & item(I) & rated(U,I) & avg_item_rating(I) >> rating(U,I)^2";
+        rules[18] = "1.0  : user(U) & item(I) & rated(U,I) & rating(U,I) >> avg_item_rating(I)^2";
 
         // Social rule of friendship influencing ratings.
-        rules[19] = "1.0 : rated(U1,I) & rated(U2,I) & users_are_friends(U1,U2) & rating(U1,I) >> rating(U2,I)";
+        rules[19] = "1.0 : rated(U1,I) & rated(U2,I) & users_are_friends(U1,U2) & rating(U1,I) >> rating(U2,I)^2";
 
         // Content rule by Jaccard similarity.
-        rules[20] = "1.0  :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_content_items_jaccard(I1,I2) >> rating(U,I2)";
+        rules[20] = "1.0  :  rated(U,I1) & rated(U,I2) & rating(U,I1) & sim_content_items_jaccard(I1,I2) >> rating(U,I2)^2";
         return rules;
     }
 
@@ -114,6 +114,32 @@ public class YelpSetting extends ModelSetting {
         HashMap<String, String> TruthPredicateData = new HashMap<>();
         TruthPredicateData.put("Rating", "rating");
         return TruthPredicateData;
+    }
+
+    private String predicateNameToDataPrefix(String PredicateName) {
+        String prefix;
+
+        switch (PredicateName){
+            case "Preference":
+                prefix = "rel_rank";
+                break;
+            case "SimilarUsers":
+                prefix = "sim_cosine_users";
+                break;
+            case "SimilarItems":
+                prefix = "sim_cosine_items";
+                break;
+            case "QueryQueryCanopy":
+                prefix = "user_user_canopy";
+                break;
+            case "ItemItemCanopy":
+                prefix = "joke_joke_canopy";
+                break;
+            default:
+                throw new IllegalArgumentException("Predicate Name:" + PredicateName + " does not exist for Jester");
+        }
+
+        return prefix;
     }
 
     @Override

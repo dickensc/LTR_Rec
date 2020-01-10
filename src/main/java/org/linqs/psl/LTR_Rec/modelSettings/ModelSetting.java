@@ -10,10 +10,13 @@ public abstract class ModelSetting {
     public abstract HashMap<String, ConstantType[]> getSettingPredicates();
 
     public abstract HashMap<String, String> getObservedPredicateData();
+    public abstract HashMap<String, String> getObservedPredicateData(String[] ablationPredicateNames);
 
     public abstract HashMap<String, String> getTargetPredicateData();
+    public abstract HashMap<String, String> getTargetPredicateData(String[] ablationPredicateNames);
 
     public abstract HashMap<String, String> getTruthPredicateData();
+    public abstract HashMap<String, String> getTruthPredicateData(String[] ablationPredicateNames);
 
     public abstract String[] getOpenPredicateNames();
 
